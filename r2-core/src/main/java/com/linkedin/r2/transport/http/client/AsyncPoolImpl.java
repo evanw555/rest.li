@@ -157,6 +157,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T>
         maxWaiters, strategy, minSize, rateLimiter, SystemClock.instance(), new LongTracking());
   }
 
+  @Deprecated
   public AsyncPoolImpl(String name,
       Lifecycle<T> lifecycle,
       int maxSize,
@@ -278,7 +279,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T>
       long timeOut = Math.min(_idleTimeout, _waitTimeout);
       if (timeOut > 0)
       {
-        long freq = Math.min(timeOut / 10, 1000);
+        long freq = Math.min(timeOut / 10, 50);
         _objectTimeoutFuture = _timeoutExecutor.scheduleAtFixedRate(new Runnable() {
           @Override
           public void run()
@@ -632,6 +633,8 @@ public class AsyncPoolImpl<T> implements AsyncPool<T>
             _statsTracker.incrementIgnoredCreation();
             if (_poolSize >= 1)
             {
+              // _poolSize also include the count of creation requests pending. So we have to make sure the pool size
+              // count is updated when we ignore the creation request.
               _poolSize--;
             }
           }
@@ -722,7 +725,7 @@ public class AsyncPoolImpl<T> implements AsyncPool<T>
 
   private void timeoutWaiters()
   {
-    Collection<TimeTrackingCallback<T>> idle = reapWaiters(_waiters, _waitTimeout);
+    Collection<TimeTrackingCallback<T>> idle = getExpiredWaiters(_waiters, _waitTimeout);
     if (idle.size() > 0)
     {
       LOG.debug("{}: failing {} waiters due to wait timeout", _poolName, idle.size());
@@ -751,21 +754,21 @@ public class AsyncPoolImpl<T> implements AsyncPool<T>
     return toReap;
   }
 
-  private <U> Collection<TimeTrackingCallback<U>> reapWaiters(Queue<TimeTrackingCallback<U>> queue, long timeout)
+  private <U> Collection<TimeTrackingCallback<U>> getExpiredWaiters(Queue<TimeTrackingCallback<U>> queue, long timeout)
   {
-    List<TimeTrackingCallback<U>> toReap = new ArrayList<>();
+    List<TimeTrackingCallback<U>> expiredWaiters = new ArrayList<>();
     long now = _clock.currentTimeMillis();
-    long target = now - timeout;
+    long deadline = now - timeout;
 
     synchronized (_lock)
     {
-      for (TimeTrackingCallback<U> p; (p = queue.peek()) != null && p.getTime() < target;)
+      for (TimeTrackingCallback<U> p; (p = queue.peek()) != null && p.getTime() < deadline;)
       {
-        toReap.add(queue.poll());
+        expiredWaiters.add(queue.poll());
         _statsTracker.incrementWaiterTimedOut();
       }
     }
-    return toReap;
+    return expiredWaiters;
   }
 
   private void shutdownIfNeeded()
@@ -875,11 +878,6 @@ public class AsyncPoolImpl<T> implements AsyncPool<T>
         _statsTracker.sampleMaxWaitTime(waitTime);
       }
       _callback.onSuccess(result);
-    }
-
-    public Callback<T> get()
-    {
-      return _callback;
     }
 
     public long getTime()

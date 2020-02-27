@@ -31,6 +31,7 @@ import com.linkedin.r2.transport.http.client.NoopRateLimiter;
 import com.linkedin.r2.transport.http.client.PoolStats;
 import com.linkedin.r2.transport.http.client.RateLimiter;
 import com.linkedin.r2.util.Cancellable;
+import com.linkedin.test.util.AssertionMethods;
 import com.linkedin.test.util.ClockedExecutor;
 import com.linkedin.util.clock.SettableClock;
 import com.linkedin.util.clock.Time;
@@ -38,6 +39,7 @@ import java.util.LinkedList;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.DataProvider;
@@ -542,8 +544,6 @@ public class TestAsyncPool
     }
     stats = pool.getStats();
     Assert.assertEquals(stats.getCheckedOut(), GET - PUT_BAD - DISPOSE);
-    // When the each create fails, it will retry and cancel the waiter,
-    // resulting in a second create error.
     Assert.assertEquals(stats.getTotalCreateErrors(), CREATE_BAD);
   }
 
@@ -603,13 +603,14 @@ public class TestAsyncPool
    * @param poolSize the maximum Object Pool Size
    * @param concurrency the maximum allowed concurrent object creation
    */
-  @Test(dataProvider = "dataProvider")
+  @Test(dataProvider = "channelStateRandomDataProvider")
   public void testObjectsAreNotCreatedWhenThereAreNoWaiters(int numberOfCheckouts, int poolSize, int concurrency)
+      throws Exception
   {
     CreationBlockableSynchronousLifecycle blockableObjectCreator =
         new CreationBlockableSynchronousLifecycle(numberOfCheckouts, concurrency);
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(500);
-    RateLimiter rateLimiter = new ExponentialBackOffRateLimiter(0, 5000,
+    ExponentialBackOffRateLimiter rateLimiter = new ExponentialBackOffRateLimiter(0, 5000,
         10, executor, concurrency);
 
     final AsyncPool<Object> pool = new AsyncPoolImpl<Object>("object pool",
@@ -624,21 +625,21 @@ public class TestAsyncPool
 
     pool.start();
 
-    // Phase A : Checking out object 'numberOfCheckout' times !
+    // Phase A:Checking out object 'numberOfCheckout' times!
     List<Object> checkedOutObjects = performCheckout(numberOfCheckouts, pool);
 
-    // Phase B : Blocking object creation and performing the checkout 'numberOfCheckout' times again
+    // Phase B:Blocking object creation and performing the checkout 'numberOfCheckout' times again
     blockableObjectCreator.blockCreation();
     Future<None> future = performUnblockingCheckout(numberOfCheckouts, numberOfCheckouts, pool);
     blockableObjectCreator.waitUntilAllBlocked();
 
-    // Phase C : Returning the checkedOut objects from Phase A back to the object pool
+    // Phase C:Returning the checkedOut objects from Phase A back to the object pool
     for (Object checkedOutObject : checkedOutObjects)
     {
       pool.put(checkedOutObject);
     }
 
-    // Phase D : All the object creation in phase B gets unblocked now
+    // Phase D:All the object creation in phase B gets unblocked now
     blockableObjectCreator.unblockCreation();
     try
     {
@@ -647,21 +648,22 @@ public class TestAsyncPool
     }
     catch (Exception e)
     {
-      Assert.fail("Unexpected interruption", e);
+      Assert.fail("Did not complete unblocked object creations on time, Unexpected interruption", e);
     }
 
     // Making sure the rate limiter pending tasks are submitted to the executor
-    while (rateLimiter.numberOfPendingTasks() > 0)
-    {
-      try
+    AssertionMethods.assertWithTimeout(5000, () -> {
+      while (rateLimiter.numberOfPendingTasks() > 0)
       {
-        Thread.sleep(1);
-      }
-      catch (Exception e)
-      {
-        Assert.fail("Unexpected interruption", e);
-      }
-    }
+        try
+        {
+          Thread.sleep(1);
+        }
+        catch (InterruptedException e)
+        {
+          Assert.fail("Did not complete the rate limiter tasks on time, Unexpected interruption", e);
+        }
+      }});
 
     // Wait for all the tasks in the rate limiter executor to finish
     executor.shutdown();
@@ -669,12 +671,12 @@ public class TestAsyncPool
     {
       if (!executor.awaitTermination(10, TimeUnit.SECONDS))
       {
-        Assert.fail("Too long to finish");
+        Assert.fail("Executor took too long to shutdown");
       }
     }
     catch (Exception ex)
     {
-      Assert.fail("Unexpected interruption", ex);
+      Assert.fail("Unexpected interruption while shutting down executor", ex);
     }
 
     // Verify all the expectations
@@ -715,12 +717,12 @@ public class TestAsyncPool
   @Test(dataProvider = "waiterTimeoutDataProvider")
   public void testWaiterTimeout(int numberOfCheckoutsInPhaseA, int numberOfCheckoutsInPhaseB,
       int numbOfObjectsToBeReturnedInPhaseC,
-      int poolSize, int concurrency, int waiterTimeout)
+      int poolSize, int concurrency, int waiterTimeout) throws Exception
   {
     CreationBlockableSynchronousLifecycle blockableObjectCreator =
         new CreationBlockableSynchronousLifecycle(numberOfCheckoutsInPhaseB, concurrency);
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(500);
-    RateLimiter rateLimiter = new ExponentialBackOffRateLimiter(0, 5000,
+    ExponentialBackOffRateLimiter rateLimiter = new ExponentialBackOffRateLimiter(0, 5000,
         10, executor, concurrency);
 
     ClockedExecutor clockedExecutor = new ClockedExecutor();
@@ -766,21 +768,22 @@ public class TestAsyncPool
     }
     catch (Exception e)
     {
-      Assert.fail("Unexpected interruption", e);
+      Assert.fail("Did not complete unblocked object creations on time, Unexpected interruption", e);
     }
 
     // Making sure the rate limiter pending tasks are submitted to the executor
-    while (rateLimiter.numberOfPendingTasks() > 0)
-    {
-      try
+    AssertionMethods.assertWithTimeout(5000, () -> {
+      while (rateLimiter.numberOfPendingTasks() > 0)
       {
-        Thread.sleep(1);
-      }
-      catch (Exception e)
-      {
-        Assert.fail("Unexpected interruption", e);
-      }
-    }
+        try
+        {
+          Thread.sleep(1);
+        }
+        catch (Exception e)
+        {
+          Assert.fail("Did not complete the rate limiter tasks on time, Unexpected interruption", e);
+        }
+      }});
 
     executor.shutdown();
 
@@ -788,12 +791,12 @@ public class TestAsyncPool
     {
       if (!executor.awaitTermination(10, TimeUnit.SECONDS))
       {
-        Assert.fail("Too long to finish");
+        Assert.fail("Executor took too long to shutdown");
       }
     }
     catch (Exception ex)
     {
-      Assert.fail("Unexpected interruption", ex);
+      Assert.fail("Unexpected interruption while shutting down executor", ex);
     }
 
     PoolStats stats = pool.getStats();
@@ -806,12 +809,12 @@ public class TestAsyncPool
   }
 
   @DataProvider
-  public Object[][] dataProvider()
+  public Object[][] channelStateRandomDataProvider()
   {
     // 500 represent a good sample for the randomized data.
     // This has been verified against 100K test cases in local
     int numberOfTestCases = 500;
-    Random randomNumberGenerator = new Random();
+    Random randomNumberGenerator = ThreadLocalRandom.current();
 
     Object[][] data = new Object[numberOfTestCases][3];
     for (int i = 0; i < numberOfTestCases; i++)
@@ -951,9 +954,7 @@ public class TestAsyncPool
           {
             checkedOutObjects.add(checkedOutObject);
           }
-
           latch.countDown();
-
         }
         catch (Exception e)
         {
@@ -1038,16 +1039,9 @@ public class TestAsyncPool
       _blockersDoneLatch = new CountDownLatch(_totalBlockers);
     }
 
-    public void waitUntilAllBlocked()
+    public void waitUntilAllBlocked() throws InterruptedException
     {
-      try
-      {
-        _blockersDoneLatch.await();
-      }
-      catch (Exception ex)
-      {
-
-      }
+      _blockersDoneLatch.await();
     }
 
     @Override

@@ -194,7 +194,6 @@ public class ExponentialBackOffRateLimiter implements RateLimiter
     }
   }
 
-  @Override
   public int numberOfPendingTasks()
   {
     return _pending.size();

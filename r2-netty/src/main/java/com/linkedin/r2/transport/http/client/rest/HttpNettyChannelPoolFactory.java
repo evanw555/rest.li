@@ -61,7 +61,7 @@ public class HttpNettyChannelPoolFactory implements ChannelPoolFactory
                                      int minPoolSize, EventLoopGroup eventLoopGroup, SSLContext sslContext, SSLParameters sslParameters, int maxHeaderSize,
                                      int maxChunkSize, int maxResponseSize, ScheduledExecutorService scheduler, int maxConcurrentConnectionInitializations,
                                      boolean enableSSLSessionResumption, ChannelGroup allChannels, int channelPoolWaiterTimeout,
-                                     int connectTimeout, int sslSessionTimeout)
+                                     int connectTimeout, int sslHandShakeTimeout)
   {
 
     _allChannels = allChannels;
@@ -72,7 +72,7 @@ public class HttpNettyChannelPoolFactory implements ChannelPoolFactory
       .channel(NioSocketChannel.class)
       .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout)
       .handler(new HttpClientPipelineInitializer(sslContext, sslParameters, maxHeaderSize, maxChunkSize, maxResponseSize,
-          enableSSLSessionResumption, sslSessionTimeout));
+          enableSSLSessionResumption, sslHandShakeTimeout));
 
     _bootstrap = bootstrap;
     _maxPoolSize = maxPoolSize;

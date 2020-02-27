@@ -73,7 +73,7 @@ public class ChannelPoolLifecycle implements AsyncPool.Lifecycle<Channel>
   private static final AsyncPoolLifecycleStats DEFAULT_LIFECYCLE_STATS = new AsyncPoolLifecycleStats(0D, 0L, 0L, 0L);
 
   private final Clock _clock = SystemClock.instance();
-  public final static String CHANNELPOOL_CALLBACK_HANDLER = "channelPoolCallbackHandler";
+  public final static String CHANNELPOOL_SSL_CALLBACK_HANDLER = "channelPoolSslCallbackHandler";
 
   private final SocketAddress _remoteAddress;
   private final Bootstrap _bootstrap;
@@ -113,14 +113,14 @@ public class ChannelPoolLifecycle implements AsyncPool.Lifecycle<Channel>
         return;
       }
 
-      c.pipeline().addAfter(SslHandlerUtil.PIPELINE_SSL_HANDLER, CHANNELPOOL_CALLBACK_HANDLER, new ChannelDuplexHandler()
+      c.pipeline().addAfter(SslHandlerUtil.PIPELINE_SSL_HANDLER, CHANNELPOOL_SSL_CALLBACK_HANDLER, new ChannelDuplexHandler()
       {
         @Override
         public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
         {
           if(evt == SslHandshakeCompletionEvent.SUCCESS){
             channelCallback.onSuccess(c);
-            c.pipeline().remove(CHANNELPOOL_CALLBACK_HANDLER);
+            c.pipeline().remove(CHANNELPOOL_SSL_CALLBACK_HANDLER);
           }
           ctx.fireUserEventTriggered(evt);
         }

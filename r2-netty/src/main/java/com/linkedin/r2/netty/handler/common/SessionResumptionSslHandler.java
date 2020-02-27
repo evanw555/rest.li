@@ -54,7 +54,6 @@ public class SessionResumptionSslHandler extends ChannelOutboundHandlerAdapter
       AttributeKey.valueOf("sslSessionResumptionHandler");
 
   private final SslHandlerGenerator _hostPortToSslHandler;
-  private Future<Channel> _handshakeFuture;
   private final int _sslHandShakeTimeout;
 
   /**
@@ -90,9 +89,8 @@ public class SessionResumptionSslHandler extends ChannelOutboundHandlerAdapter
     sslHandler.setHandshakeTimeout(_sslHandShakeTimeout, TimeUnit.MILLISECONDS);
 
     ctx.pipeline().addAfter(PIPELINE_SESSION_RESUMPTION_HANDLER, SslHandlerUtil.PIPELINE_SSL_HANDLER, sslHandler);
-    _handshakeFuture = sslHandler.handshakeFuture();
     ctx.pipeline().addAfter(SslHandlerUtil.PIPELINE_SSL_HANDLER, SslHandshakeTimingHandler.SSL_HANDSHAKE_TIMING_HANDLER,
-        new SslHandshakeTimingHandler(_handshakeFuture));
+        new SslHandshakeTimingHandler(sslHandler.handshakeFuture()));
 
     // the certificate handler should be run only after the handshake is completed (and therefore after the ssl handler)
     ctx.pipeline().addAfter(SslHandlerUtil.PIPELINE_SSL_HANDLER, CertificateHandler.PIPELINE_CERTIFICATE_HANDLER,

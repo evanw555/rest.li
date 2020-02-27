@@ -67,7 +67,7 @@ public class AsyncPoolStats implements PoolStats
       int totalBadDestroyed,
       int totalTimedOut,
       int totalWaiterTimedOut,
-      int totalCreationIgnored,
+      int totalCreationsIgnored,
 
       int checkedOut,
       int maxPoolSize,
@@ -92,7 +92,7 @@ public class AsyncPoolStats implements PoolStats
     _totalDestroyErrors = totalDestroyErrors;
     _totalBadDestroyed = totalBadDestroyed;
     _totalTimedOut = totalTimedOut;
-    _totalCreationIgnored = totalCreationIgnored;
+    _totalCreationIgnored = totalCreationsIgnored;
     _totalWaiterTimedOut = totalWaiterTimedOut;
 
     _checkedOut = checkedOut;
