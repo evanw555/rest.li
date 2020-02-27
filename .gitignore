@@ -6,8 +6,6 @@
 *.ipr
 .gradle/
 .idea/
-build/
-*/build/
 out/
 */python/bin/
 */python/lib/
@@ -20,7 +18,7 @@ examples/*/api/src/main/idl
 examples/*/api/src/main/snapshot
 ligradle/
 .DS_Store
-# _site/
 .sass-cache/
 .jekyll-cache/
 
+/build/

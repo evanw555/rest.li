@@ -13,3 +13,5 @@ toc:
 highlighter:
   rouge
 
+# Output rendered HTML into ./build
+destination: ./build
