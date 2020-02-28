@@ -15,3 +15,6 @@ highlighter:
 
 # Output rendered HTML into ./build
 destination: ./build
+ 
+baseurl: /rest.li
+
