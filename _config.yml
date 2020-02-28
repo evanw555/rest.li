@@ -14,6 +14,7 @@ highlighter:
   rouge
 
 # Output rendered HTML into ./build
+source: ./src
 destination: ./build
  
 baseurl: /rest.li

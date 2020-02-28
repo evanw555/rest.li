@@ -1,24 +1,4 @@
-.project
-.settings
-.classpath
-*.iml
-*.iws
-*.ipr
-.gradle/
-.idea/
-out/
-*/python/bin/
-*/python/lib/
-*/python/include/
-*/bin/
-codegen/
-*Generated*/
-test-output/
-examples/*/api/src/main/idl
-examples/*/api/src/main/snapshot
-ligradle/
-.DS_Store
-.sass-cache/
-.jekyll-cache/
+/build/
+/.sass-cache/
+/.jekyll-cache/
 
-# /build/
