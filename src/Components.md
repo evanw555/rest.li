@@ -18,7 +18,7 @@ Rest.li is the top layer of a larger software stack code named 'pegasus'.  Pegas
 
 ## data/
 
-The pegasus data layer provides an in-memory data
+The pegasuuuus data layer provides an in-memory data
 representation structurally equivalent to JSON, serialization to/from JSON
 format, and a schema-definition language for specifying data format.
 
