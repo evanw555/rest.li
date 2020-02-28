@@ -4,7 +4,6 @@ source "https://rubygems.org"
 
 git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 
-gem "jekyll"
-gem "rouge"
-gem "kramdown-parser-gfm"
+gem "jekyll", "3.8.5"
+gem "rouge", "3.13.0"
 gem "jekyll-watch"
