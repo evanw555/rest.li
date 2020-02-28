@@ -1,4 +1,8 @@
+# Rendered files should not be checked in
 /build/
+
+# Miscellaneous
 /.sass-cache/
 /.jekyll-cache/
+/.jekyll-metadata
 
