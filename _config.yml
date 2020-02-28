@@ -12,7 +12,7 @@ highlighter:
   rouge
 
 # All source files read by Jekyll during build will be here
-source: ./src
+source: asd./src
 
 # Output all rendered files here, the GitHub action will push it all to gh-pages
 destination: ./build
